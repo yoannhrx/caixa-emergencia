@@ -122,7 +122,31 @@
       color: white;
     }
     .clear-btn { background: var(--danger); }
-    .save-btn { background: var(--accent); color: #052e16; }
+    .cash-btn { background: #f59e0b; color: #111827; }
+    .card-btn { background: var(--accent); color: #052e16; }
+    .session-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .summary-card {
+      background: #111827;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .summary-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 17px;
+      margin-top: 4px;
+    }
+    @media (max-width: 700px) {
+      .session-summary { grid-template-columns: repeat(2, 1fr); }
+    }
     .history {
       margin-top: 12px;
       background: var(--panel);
@@ -224,13 +248,19 @@
     <div id="cartItems"></div>
     <div class="total" id="total">Total: 0,00€</div>
     <div class="actions">
-      <button class="action-btn clear-btn" onclick="clearCart()">Novo pedido</button>
-      <button class="action-btn save-btn" onclick="saveSale()">Guardar pedido</button>
+      <button class="action-btn cash-btn" onclick="saveSale('DINHEIRO')">DINHEIRO</button>
+      <button class="action-btn card-btn" onclick="saveSale('MULTIBANCO')">MULTIBANCO</button>
     </div>
   </div>
 
   <div class="history">
     <h2>Histórico da sessão</h2>
+    <div class="session-summary">
+      <div class="summary-card">Pedidos<strong id="summaryOrders">0</strong></div>
+      <div class="summary-card">Total sessão<strong id="summaryTotal">0,00€</strong></div>
+      <div class="summary-card">Dinheiro<strong id="summaryCash">0,00€</strong></div>
+      <div class="summary-card">Multibanco<strong id="summaryCard">0,00€</strong></div>
+    </div>
     <div id="historyItems">Nenhum pedido guardado.</div>
     <button class="action-btn clear-btn" style="width:100%;margin-top:10px;" onclick="clearHistory()">Limpar histórico da sessão</button>
   </div>
@@ -301,13 +331,17 @@
       renderCart();
     }
 
-    function saveSale() {
-      if (cart.length === 0) return;
+    function saveSale(payment) {
+      if (cart.length === 0) {
+        alert('Nenhum artigo no pedido.');
+        return;
+      }
       const total = cart.reduce((sum, item) => sum + item.price, 0);
       const sale = {
         date: new Date().toLocaleString('pt-PT'),
         number: history.length + 1,
         total,
+        payment,
         items: cart.map(i => i.name)
       };
       history.unshift(sale);
@@ -318,13 +352,26 @@
 
     function renderHistory() {
       const box = document.getElementById('historyItems');
+      const totalSession = history.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const totalCash = history
+        .filter(sale => sale.payment === 'DINHEIRO')
+        .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const totalCard = history
+        .filter(sale => sale.payment === 'MULTIBANCO')
+        .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+
+      document.getElementById('summaryOrders').textContent = history.length;
+      document.getElementById('summaryTotal').textContent = money(totalSession);
+      document.getElementById('summaryCash').textContent = money(totalCash);
+      document.getElementById('summaryCard').textContent = money(totalCard);
+
       if (history.length === 0) {
         box.textContent = 'Nenhum pedido guardado.';
         return;
       }
       box.innerHTML = history.map((sale, index) => `
         <div class="history-item">
-          <strong>Pedido #${history.length - index}</strong> — ${sale.date} — ${money(sale.total)}<br>
+          <strong>Pedido #${history.length - index}</strong> — ${sale.date} — <strong>${sale.payment || 'SEM PAGAMENTO'}</strong> — ${money(sale.total)}<br>
           ${sale.items.join(', ')}
         </div>
       `).join('');
